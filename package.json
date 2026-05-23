@@ -13,6 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "demo": "tsx src/demo/cliClient.ts",
+    "dev:p1": "tsx src/demo/cliClient.ts --dev-as p1",
+    "dev:p2": "tsx src/demo/cliClient.ts --dev-as p2",
     "mint-jwt": "tsx scripts/mintTestJwt.ts",
     "typecheck": "tsc --noEmit"
   },

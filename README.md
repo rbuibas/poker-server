@@ -41,18 +41,29 @@ ships only `dist/`.
 ### Local play with NO database (`DEV_NO_DB=1`)
 
 If you just want to play through the WebSocket protocol without touching
-Supabase at all:
+Supabase at all, you need three terminals:
 
 ```sh
-npm run dev:nodb     # boots with in-memory stores, prints copy-paste JWTs
+# Terminal 1: boot the server (in-memory stores, hardcoded dev lounge)
+npm run dev:nodb
+
+# Terminal 2: player 1 (lounge owner, seat 0)
+npm run dev:p1
+
+# Terminal 3: player 2 (seat 1)
+npm run dev:p2
 ```
 
-The server pre-creates a hardcoded lounge and prints two ready-to-paste
-PowerShell + bash blocks containing JWTs for two test users. Open two
-more terminals, paste one block in each, and they'll connect, sit at
-seats 0 and 1, and let you play interactively. Every JWT presented to
-the server in this mode is auto-added as a member of the dev lounge.
-Hands are kept in memory only — restart the server to wipe everything.
+`dev:p1` and `dev:p2` auto-mint JWTs using the same dev secret as the
+server and connect to the hardcoded dev lounge — no env vars, no
+copy-paste. Each client auto-sits at its seat with a 1000 buy-in. Type
+`s` in either to deal the first hand, then play normally (see the
+[Demo CLI](#demo-cli-clients-no-ui-required) section above).
+
+Every JWT presented to the server in `DEV_NO_DB` mode is auto-added as
+a member of the dev lounge, so you can also spin up additional spectator
+clients with custom user IDs via the plain `npm run demo` flow. Hands
+live only in memory — restart the server to wipe everything.
 
 ## Database migration
 

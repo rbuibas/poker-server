@@ -27,6 +27,23 @@
 import 'dotenv/config';
 import { io, Socket } from 'socket.io-client';
 import * as readline from 'node:readline';
+import { SignJWT } from 'jose';
+import { DEV_JWT_SECRET } from '../config.js';
+
+const DEV_LOUNGE_ID = '00000000-0000-0000-0000-000000000001';
+const DEV_OWNER_ID = '00000000-0000-0000-0000-0000000000aa';
+const DEV_PLAYER2_ID = '00000000-0000-0000-0000-0000000000bb';
+
+async function mintDevJwt(userId: string): Promise<string> {
+  const key = new TextEncoder().encode(DEV_JWT_SECRET);
+  return new SignJWT({ role: 'authenticated' })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setSubject(userId)
+    .setAudience('authenticated')
+    .setIssuedAt()
+    .setExpirationTime('12h')
+    .sign(key);
+}
 
 interface CliArgs {
   jwt: string;
@@ -64,7 +81,7 @@ const YELLOW = '\x1b[33m';
 const CYAN = '\x1b[36m';
 const MAGENTA = '\x1b[35m';
 
-function parseArgs(): CliArgs {
+async function parseArgs(): Promise<CliArgs> {
   const argv = process.argv.slice(2);
   const get = (flag: string): string | undefined => {
     const i = argv.indexOf(flag);
@@ -72,12 +89,33 @@ function parseArgs(): CliArgs {
   };
   const bot = argv.includes('--bot');
   const verbose = argv.includes('--verbose') || argv.includes('-v');
+
+  // Dev shortcut: --dev-as owner|p2 (or env DEV_AS) mints a JWT on the fly
+  // using the same secret + UUIDs the DEV_NO_DB server uses. Zero copy-paste.
+  const devAs = get('--dev-as') ?? process.env.DEV_AS;
+  if (devAs === 'owner' || devAs === 'p1' || devAs === 'p2') {
+    const userId = devAs === 'p2' ? DEV_PLAYER2_ID : DEV_OWNER_ID;
+    const seat = devAs === 'p2' ? 1 : 0;
+    return {
+      jwt: await mintDevJwt(userId),
+      loungeId: DEV_LOUNGE_ID,
+      seat,
+      buyIn: Number(get('--buy-in') ?? process.env.BUY_IN ?? 1000),
+      serverUrl: get('--server') ?? process.env.SERVER_URL ?? 'http://localhost:3001',
+      bot,
+      verbose,
+    };
+  }
+
   const jwt = get('--jwt') ?? process.env.JWT;
   const loungeId = get('--lounge') ?? process.env.LOUNGE_ID;
   const seatStr = get('--seat') ?? process.env.SEAT;
   const buyInStr = get('--buy-in') ?? process.env.BUY_IN;
   const serverUrl = get('--server') ?? process.env.SERVER_URL ?? 'http://localhost:3001';
-  if (!jwt) throw new Error('JWT required (env JWT or --jwt)');
+  if (!jwt)
+    throw new Error(
+      'JWT required (env JWT, --jwt, or --dev-as owner|p2 for DEV_NO_DB mode)',
+    );
   if (!loungeId) throw new Error('LOUNGE_ID required (env LOUNGE_ID or --lounge)');
   if (!seatStr) throw new Error('SEAT required (env SEAT or --seat)');
   return {
@@ -120,7 +158,7 @@ ${BOLD}Commands${RESET}
 }
 
 async function main(): Promise<void> {
-  const args = parseArgs();
+  const args = await parseArgs();
   const socket: Socket = io(args.serverUrl, {
     auth: { token: args.jwt },
     transports: ['websocket'],

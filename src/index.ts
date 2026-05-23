@@ -1,5 +1,4 @@
 import { config as loadDotenv } from 'dotenv';
-import { SignJWT } from 'jose';
 import { loadConfig } from './config.js';
 import {
   buildServer,
@@ -12,47 +11,23 @@ if (process.env.NODE_ENV !== 'production') {
   loadDotenv();
 }
 
-async function mintDevJwt(secret: string, userId: string): Promise<string> {
-  const key = new TextEncoder().encode(secret);
-  return new SignJWT({ role: 'authenticated' })
-    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
-    .setSubject(userId)
-    .setAudience('authenticated')
-    .setIssuedAt()
-    .setExpirationTime('12h')
-    .sign(key);
-}
-
-async function printDevBanner(jwtSecret: string, port: number): Promise<void> {
-  const ownerJwt = await mintDevJwt(jwtSecret, DEV_OWNER_ID);
-  const player2Jwt = await mintDevJwt(jwtSecret, DEV_PLAYER2_ID);
+function printDevBanner(port: number): void {
   const url = `http://localhost:${port}`;
   /* eslint-disable no-console */
   console.log('');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('  DEV_NO_DB mode — no Supabase, in-memory stores only');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`  Server:      ${url}`);
   console.log(`  Lounge ID:   ${DEV_LOUNGE_ID}`);
   console.log(`  Owner ID:    ${DEV_OWNER_ID}`);
   console.log(`  Player 2 ID: ${DEV_PLAYER2_ID}`);
   console.log('');
-  console.log('  Open two terminals in poker-server/ and paste one block each:');
+  console.log('  ▶ Open two more terminals in poker-server/ and run:');
+  console.log('    Terminal 2:  npm run dev:p1');
+  console.log('    Terminal 3:  npm run dev:p2');
   console.log('');
-  console.log('  ── PLAYER 1 (owner) — PowerShell ──');
-  console.log(`  $env:JWT='${ownerJwt}'`);
-  console.log(`  $env:LOUNGE_ID='${DEV_LOUNGE_ID}'`);
-  console.log(`  $env:SEAT='0'; $env:BUY_IN='1000'; $env:SERVER_URL='${url}'`);
-  console.log('  npm run demo');
-  console.log('');
-  console.log('  ── PLAYER 2 — PowerShell ──');
-  console.log(`  $env:JWT='${player2Jwt}'`);
-  console.log(`  $env:LOUNGE_ID='${DEV_LOUNGE_ID}'`);
-  console.log(`  $env:SEAT='1'; $env:BUY_IN='1000'; $env:SERVER_URL='${url}'`);
-  console.log('  npm run demo');
-  console.log('');
-  console.log('  ── bash / Linux / macOS ──');
-  console.log(`  JWT='${ownerJwt}' LOUNGE_ID=${DEV_LOUNGE_ID} SEAT=0 BUY_IN=1000 SERVER_URL=${url} npm run demo`);
-  console.log(`  JWT='${player2Jwt}' LOUNGE_ID=${DEV_LOUNGE_ID} SEAT=1 BUY_IN=1000 SERVER_URL=${url} npm run demo`);
+  console.log('  Each script auto-mints its JWT and joins the dev lounge.');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('');
   /* eslint-enable no-console */
@@ -67,7 +42,7 @@ async function main(): Promise<void> {
   app.logger.info({ port, devMode: config.DEV_NO_DB }, 'poker-server listening');
 
   if (config.DEV_NO_DB) {
-    await printDevBanner(config.SUPABASE_JWT_SECRET, port);
+    printDevBanner(port);
   }
 
   const shutdown = async (signal: string): Promise<void> => {
